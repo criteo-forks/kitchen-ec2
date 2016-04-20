@@ -422,6 +422,13 @@ module Kitchen
             " #{status_msg}, attempting to destroy it")
           destroy(state)
           raise
+        rescue ::Aws::EC2::Errors::RequestLimitExceeded, ::Aws::Waiters::Errors::UnexpectedError => e
+          if e.message.include?("Request limit exceeded")
+            info("Request limit exceeded for instance <#{state[:server_id]}>." \
+              " Trying again in 5 seconds.")
+            sleep(5)
+            retry
+          end
         end
       end
 
