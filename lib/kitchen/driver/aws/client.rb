@@ -74,7 +74,13 @@ module Kitchen
         # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
         def create_instance(options)
-          resource.create_instances(options)[0]
+          begin
+            resource.create_instances(options)[0]
+          rescue ::Aws::EC2::Errors::RequestLimitExceeded
+            puts "Request limit exceeded when creating an instance. Trying again in 5 seconds."
+            sleep(5)
+            retry
+          end
         end
 
         def get_instance(id)
