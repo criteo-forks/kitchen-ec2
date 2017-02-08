@@ -70,6 +70,35 @@ describe Kitchen::Driver::Ec2 do
       Kitchen::Driver::EC2_VERSION)
   end
 
+  describe "default_config" do
+    context "Windows" do
+      let(:resource) { instance_double(::Aws::EC2::Resource, :image => image) }
+      before do
+        allow(driver).to receive(:windows_os?).and_return(true)
+        allow(client).to receive(:resource).and_return(resource)
+        allow(instance).to receive(:name).and_return("instance_name")
+      end
+      context "Windows 2016" do
+        let(:image) {
+          FakeImage.new(:name => "Windows_Server-2016-English-Full-Base-2017.01.11")
+        }
+        it "sets :user_data to something" do
+          expect(driver[:user_data]).to include
+          '$logfile=C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\kitchen-ec2.log'
+        end
+      end
+      context "Windows 2012R2" do
+        let(:image) {
+          FakeImage.new(:name => "Windows_Server-2012-R2_RTM-English-64Bit-Base-2017.01.11")
+        }
+        it "sets :user_data to something" do
+          expect(driver[:user_data]).to include
+          '$logfile=C:\\Program Files\\Amazon\\Ec2ConfigService\\Logs\\kitchen-ec2.log'
+        end
+      end
+    end
+  end
+
   describe "#hostname" do
     let(:public_dns_name) { nil }
     let(:private_dns_name) { nil }
@@ -212,12 +241,16 @@ describe Kitchen::Driver::Ec2 do
 
     before do
       expect(driver).to receive(:instance).at_least(:once).and_return(instance)
+      allow(Time).to receive(:now).and_return(Time.now)
     end
 
     it "submits the server request" do
       expect(generator).to receive(:ec2_instance_data).and_return({})
       expect(actual_client).to receive(:request_spot_instances).with(
-        :spot_price => "", :launch_specification => {}, :block_duration_minutes => 60
+        :spot_price => "",
+        :launch_specification => {},
+        :valid_until => Time.now + (config[:retryable_tries] * config[:retryable_sleep]),
+        :block_duration_minutes => 60
       ).and_return(response)
       expect(actual_client).to receive(:wait_until)
       expect(client).to receive(:get_instance_from_spot_request).with("id")
@@ -240,6 +273,23 @@ describe Kitchen::Driver::Ec2 do
     it "does not raise" do
       config[:tags] = nil
       expect { driver.tag_server(server) }.not_to raise_error
+    end
+  end
+
+  describe "#tag_volumes" do
+    let(:volume) { double("aws volume resource") }
+    before do
+      allow(server).to receive(:volumes).and_return([volume])
+    end
+    it "tags the instance volumes" do
+      config[:tags] = { :key1 => :value1, :key2 => :value2 }
+      expect(volume).to receive(:create_tags).with(
+        :tags => [
+          { :key => :key1, :value => :value1 },
+          { :key => :key2, :value => :value2 }
+        ]
+      )
+      driver.tag_volumes(server)
     end
   end
 
@@ -282,6 +332,43 @@ describe Kitchen::Driver::Ec2 do
         expect(aws_instance).to receive(:exists?).and_return(true)
         expect(aws_instance).to receive_message_chain("state.name").and_return("running")
         expect(driver.wait_until_ready(server, state)).to eq(true)
+      end
+    end
+  end
+
+  describe "#wait_until_volumes_ready" do
+    let(:aws_instance) { double("aws instance") }
+    let(:msg) { "volumes to be ready" }
+    let(:volume) { double("aws volume resource") }
+
+    before do
+      expect(driver).to receive(:wait_with_destroy).with(server, state, msg).and_yield(aws_instance)
+    end
+    it "first checks instance existence" do
+      expect(aws_instance).to receive(:exists?).and_return(false)
+      expect(driver.wait_until_volumes_ready(server, state)).to eq(false)
+    end
+    it "second, it checks for prescence of described volumes" do
+      expect(aws_instance).to receive(:exists?).and_return(true)
+      expect(actual_client).to receive_message_chain(:describe_volumes, :volumes, :length
+      ).and_return(0)
+      expect(aws_instance).to receive(:volumes).and_return([])
+      expect(driver.wait_until_volumes_ready(server, state)).to eq(false)
+    end
+    it "third, it compares the described volumes and instance volumes" do
+      expect(aws_instance).to receive(:exists?).and_return(true)
+      expect(actual_client).to receive_message_chain(:describe_volumes, :volumes, :length
+      ).and_return(2)
+      expect(aws_instance).to receive(:volumes).and_return([volume])
+      expect(driver.wait_until_volumes_ready(server, state)).to eq(false)
+    end
+    context "when it exists, and both client and instance agree on volumes" do
+      it "returns true" do
+        expect(aws_instance).to receive(:exists?).and_return(true)
+        expect(actual_client).to receive_message_chain(:describe_volumes, :volumes, :length
+        ).and_return(1)
+        expect(aws_instance).to receive(:volumes).and_return([volume])
+        expect(driver.wait_until_volumes_ready(server, state)).to eq(true)
       end
     end
   end
@@ -362,6 +449,8 @@ describe Kitchen::Driver::Ec2 do
         expect(server).to receive(:wait_until_exists)
         expect(driver).to receive(:update_username)
         expect(driver).to receive(:tag_server).with(server)
+        expect(driver).to receive(:tag_volumes).with(server)
+        expect(driver).to receive(:wait_until_volumes_ready).with(server, state)
         expect(driver).to receive(:wait_until_ready).with(server, state)
         expect(transport).to receive_message_chain("connection.wait_until_ready")
         expect(driver).to receive(:create_ec2_json).with(state)
@@ -397,6 +486,18 @@ describe Kitchen::Driver::Ec2 do
       end
 
       include_examples "common create"
+    end
+
+    context "instance is not a standard platform" do
+      let(:state) { {} }
+      before do
+        expect(driver).to receive(:actual_platform).and_return(nil)
+      end
+
+      it "doesn't set the state username" do
+        driver.update_username(state)
+        expect(state).to eq({})
+      end
     end
 
   end

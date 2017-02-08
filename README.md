@@ -79,9 +79,10 @@ You can learn more about the available filters in the AWS CLI doc under `--filte
 ```yaml
 platforms:
   - name: ubuntu-14.04
-    image_search:
-      owner-id: "099720109477"
-      name: ubuntu/images/*/ubuntu-*-14.04*
+    driver:
+      image_search:
+        owner-id: "099720109477"
+        name: ubuntu/images/*/ubuntu-*-14.04*
 ```
 
 In the event that there are multiple matches (as sometimes happens), we sort to
@@ -91,6 +92,16 @@ get the best results. In order of priority from greatest to least, we prefer:
 - SSD support over magnetic drives
 - 64-bit over 32-bit
 - The most recently created image (to pick up patch releases)
+
+Note that the image_search method *requires* that the AMI image names be in a specific format.
+Some examples are:
+
+- Windows-2012
+- Windows-2012r2
+- Windows-2012r2sp1
+- RHEL-7.2
+
+It is safest to use the same naming convention as used by the public images published by the OS vendors on the AWS marketplace.
 
 #### `platform.name`
 
@@ -247,6 +258,20 @@ instance.
 
 The default is `["default"]`.
 
+### `security_group_filter`
+
+The EC2 [security group][group_docs] which will be applied to the instance,
+specified by tag. Only one group can be specified this way.
+
+The default is unset, or `nil`.
+
+An example of usage:
+```yaml
+security_group_filter:
+  tag:   'Name'
+  value: 'example-group-name'
+```
+
 ### `region`
 
 **Required** The AWS [region][region_docs] to use.
@@ -259,6 +284,19 @@ Otherwise the default is `"us-east-1"`.
 The EC2 [subnet][subnet_docs] to use.
 
 The default is unset, or `nil`.
+
+### `subnet_filter`
+
+The EC2 [subnet][subnet_docs] to use, specified by tag.
+
+The default is unset, or `nil`.
+
+An example of usage:
+```yaml
+subnet_filter:
+  tag:   'Name'
+  value: 'example-subnet-name'
+```
 
 ### `tags`
 

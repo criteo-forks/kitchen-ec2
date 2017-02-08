@@ -81,6 +81,7 @@ module Kitchen
       default_config :interface,           nil
       default_config :http_proxy,          ENV["HTTPS_PROXY"] || ENV["HTTP_PROXY"]
       default_config :retry_limit,         3
+      default_config :tenancy,             "default"
       default_config :instance_initiated_shutdown_behavior, nil
 
       def initialize(*args, &block)
@@ -194,6 +195,8 @@ module Kitchen
         # Tagging can fail with a NotFound error even though we waited until the server exists
         # Waiting can also fail, so we have to also retry on that.  If it means we re-tag the
         # instance, so be it.
+        # Tagging an instance is possible before volumes are attached. Tagging the volumes after
+        # instance creation is consistent.
         Retryable.retryable(
           :tries => 10,
           :sleep => lambda { |n| [2**n, 30].min },
@@ -204,6 +207,8 @@ module Kitchen
 
           state[:server_id] = server.id
           info("EC2 instance <#{state[:server_id]}> created.")
+          wait_until_volumes_ready(server, state)
+          tag_volumes(server)
           wait_until_ready(server, state)
         end
 
@@ -296,9 +301,14 @@ module Kitchen
       end
 
       def update_username(state)
-        # TODO: if the user explicitly specified the transport's default username,
-        # do NOT overwrite it!
-        if instance.transport[:username] == instance.transport.class.defaults[:username]
+        # BUG: With the following equality condition on username, if the user specifies 'root'
+        # as the transport's username then we will overwrite that value with one from the standard
+        # platform definitions.  This seems difficult to handle here as the default username is
+        # provided by the underlying transport classes, and is often non-nil (eg; 'root'), leaving
+        # us no way to distinguish a user-set value from the transport's default.
+        # See https://github.com/test-kitchen/kitchen-ec2/pull/273
+        if actual_platform &&
+            instance.transport[:username] == instance.transport.class.defaults[:username]
           debug("No SSH username specified: using default username #{actual_platform.username} " \
                 " for image #{config[:image_id]}, which we detected as #{actual_platform}.")
           state[:username] = actual_platform.username
@@ -356,9 +366,11 @@ module Kitchen
       end
 
       def create_spot_request
+        request_duration = config[:retryable_tries] * config[:retryable_sleep]
         request_data = {
           :spot_price => config[:spot_price].to_s,
-          :launch_specification => instance_generator.ec2_instance_data
+          :launch_specification => instance_generator.ec2_instance_data,
+          :valid_until => Time.now + request_duration
         }
         if config[:block_duration_minutes]
           request_data[:block_duration_minutes] = config[:block_duration_minutes]
@@ -375,6 +387,34 @@ module Kitchen
             tags << { :key => k, :value => v }
           end
           server.create_tags(:tags => tags)
+        end
+      end
+
+      def tag_volumes(server)
+        tags = []
+        config[:tags].each do |k, v|
+          tags << { :key => k, :value => v }
+        end
+        server.volumes.each do |volume|
+          volume.create_tags(:tags => tags)
+        end
+      end
+
+      # Compares the requested volume count vs what has actually been set to be
+      # attached to the instance. The information requested through
+      # ec2.client.described_volumes is updated before the instance volume
+      # information.
+      def wait_until_volumes_ready(server, state)
+        wait_with_destroy(server, state, "volumes to be ready") do |aws_instance|
+          described_volume_count = 0
+          ready_volume_count = 0
+          if aws_instance.exists?
+            described_volume_count = ec2.client.describe_volumes(:filters => [
+              { :name => "attachment.instance-id", :values => ["#{state[:server_id]}"] }]
+              ).volumes.length
+            aws_instance.volumes.each { ready_volume_count += 1 }
+          end
+          (described_volume_count > 0) && (described_volume_count == ready_volume_count)
         end
       end
 
@@ -520,10 +560,15 @@ module Kitchen
           EOH
         end
 
+        if actual_platform.version =~ /2016/
+          logfile_name = 'C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\kitchen-ec2.log'
+        else
+          logfile_name = 'C:\\Program Files\\Amazon\\Ec2ConfigService\\Logs\\kitchen-ec2.log'
+        end
         # Returning the fully constructed PowerShell script to user_data
         Kitchen::Util.outdent!(<<-EOH)
         <powershell>
-        $logfile="C:\\Program Files\\Amazon\\Ec2ConfigService\\Logs\\kitchen-ec2.log"
+        $logfile=#{logfile_name}
         # Allow script execution
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force
         #PS Remoting and & winrm.cmd basic config
