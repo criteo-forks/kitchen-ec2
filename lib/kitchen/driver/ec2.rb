@@ -231,7 +231,13 @@ module Kitchen
 
         server = ec2.get_instance(state[:server_id])
         unless server.nil?
-          instance.transport.connection(state).close
+          begin
+            instance.transport.connection(state).close
+          rescue ex
+            # We don't care if this fails, and it does so regularly for an
+            # unknown reason
+            info("Error closing connection with message: #{ex}")
+          end
           server.terminate
         end
         if state[:spot_request_id]
