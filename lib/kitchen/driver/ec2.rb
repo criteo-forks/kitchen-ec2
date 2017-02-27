@@ -233,10 +233,10 @@ module Kitchen
         unless server.nil?
           begin
             instance.transport.connection(state).close
-          rescue ex
+          rescue StandardError => ex
             # We don't care if this fails, and it does so regularly for an
             # unknown reason
-            info("Error closing connection with message: #{ex}")
+            info("Error closing connection with message: #{ex.backtrace}")
           end
           server.terminate
         end
