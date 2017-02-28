@@ -236,7 +236,10 @@ module Kitchen
           rescue StandardError => ex
             # We don't care if this fails, and it does so regularly for an
             # unknown reason
-            info("Error closing connection with message: #{ex.backtrace}")
+            info("Error closing connection with message: #{ex.class.name} #{ex.message} #{ex.backtrace}")
+          rescue Exception => ex
+            info("For an unkwown reason, #{ex.class.name} #{ex.message} is not caught as a StandardError")
+            raise
           end
           server.terminate
         end
