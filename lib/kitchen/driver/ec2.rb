@@ -233,21 +233,10 @@ module Kitchen
         unless server.nil?
           begin
             instance.transport.connection(state).close
-          rescue ::StandardError => ex
+          rescue ::StandardError => ex # NOTE: using :: is really important as there is another kind of StandardError defined in this context
             # We don't care if this fails, and it does so regularly for an
             # unknown reason
             info("Error closing connection with message: #{ex.class.name} #{ex.message} #{ex.backtrace}")
-          rescue Exception => ex
-            info("For an unkwown reason, #{ex.class.name} is not caught as a StandardError")
-            info(<<-EOH)
-            Details:
-            #{ex.inspect}
-            is a standard error: #{ex.is_a?(StandardError)}
-            is a standard error: #{ex.is_a?(::StandardError)}
-            parent class: #{ex.class.superclass.name}
-            grand parent class: #{ex.class.superclass.superclass.name}
-            EOH
-            raise
           end
           server.terminate
         end
