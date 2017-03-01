@@ -243,6 +243,7 @@ module Kitchen
             Details:
             #{ex.inspect}
             is a standard error: #{ex.is_a?(StandardError)}
+            is a standard error: #{ex.is_a?(::StandardError)}
             parent class: #{ex.class.superclass.name}
             grand parent class: #{ex.class.superclass.superclass.name}
             EOH
