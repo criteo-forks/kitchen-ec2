@@ -48,15 +48,15 @@ module Kitchen
 
       plugin_version Kitchen::Driver::EC2_VERSION
 
-      default_config :region,             ENV["AWS_REGION"] || "us-east-1"
+      default_config :region, ENV["AWS_REGION"] || "us-east-1"
       default_config :shared_credentials_profile, nil
-      default_config :availability_zone,  nil
+      default_config :availability_zone, nil
       default_config :instance_type do |driver|
         driver.default_instance_type
       end
       default_config :ebs_optimized,      false
       default_config :security_group_ids, nil
-      default_config :tags,                "created-by" => "test-kitchen"
+      default_config :tags, "created-by" => "test-kitchen"
       default_config :user_data do |driver|
         if driver.windows_os?
           driver.default_windows_user_data
@@ -83,6 +83,7 @@ module Kitchen
       default_config :retry_limit,         3
       default_config :tenancy,             "default"
       default_config :instance_initiated_shutdown_behavior, nil
+      default_config :ssl_verify_peer, true
 
       def initialize(*args, &block)
         super
@@ -329,7 +330,8 @@ module Kitchen
           config[:aws_secret_access_key],
           config[:aws_session_token],
           config[:http_proxy],
-          config[:retry_limit]
+          config[:retry_limit],
+          config[:ssl_verify_peer]
         )
       end
 
@@ -376,7 +378,7 @@ module Kitchen
         request_data = {
           :spot_price => config[:spot_price].to_s,
           :launch_specification => instance_generator.ec2_instance_data,
-          :valid_until => Time.now + request_duration
+          :valid_until => Time.now + request_duration,
         }
         if config[:block_duration_minutes]
           request_data[:block_duration_minutes] = config[:block_duration_minutes]
@@ -387,22 +389,22 @@ module Kitchen
       end
 
       def tag_server(server)
-        if config[:tags]
-          tags = []
-          config[:tags].each do |k, v|
-            tags << { :key => k, :value => v }
+        if config[:tags] && !config[:tags].empty?
+          tags = config[:tags].map do |k, v|
+            { :key => k, :value => v }
           end
           server.create_tags(:tags => tags)
         end
       end
 
       def tag_volumes(server)
-        tags = []
-        config[:tags].each do |k, v|
-          tags << { :key => k, :value => v }
-        end
-        server.volumes.each do |volume|
-          volume.create_tags(:tags => tags)
+        if config[:tags] && !config[:tags].empty?
+          tags = config[:tags].map do |k, v|
+            { :key => k, :value => v }
+          end
+          server.volumes.each do |volume|
+            volume.create_tags(:tags => tags)
+          end
         end
       end
 
@@ -502,7 +504,7 @@ module Kitchen
           "dns" => "public_dns_name",
           "public" => "public_ip_address",
           "private" => "private_ip_address",
-          "private_dns" => "private_dns_name"
+          "private_dns" => "private_dns_name",
         }
 
       #
@@ -578,13 +580,15 @@ module Kitchen
         # Allow script execution
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force
         #PS Remoting and & winrm.cmd basic config
-        Enable-PSRemoting -Force -SkipNetworkProfileCheck
+        $enableArgs=@{Force=$true}
+        $command=Get-Command Enable-PSRemoting
+        if($command.Parameters.Keys -contains "skipnetworkprofilecheck"){
+            $enableArgs.skipnetworkprofilecheck=$true
+        }
+        Enable-PSRemoting @enableArgs
         & winrm.cmd set winrm/config '@{MaxTimeoutms="1800000"}' >> $logfile
         & winrm.cmd set winrm/config/winrs '@{MaxMemoryPerShellMB="1024"}' >> $logfile
         & winrm.cmd set winrm/config/winrs '@{MaxShellsPerUser="50"}' >> $logfile
-        #Server settings - support username/password login
-        & winrm.cmd set winrm/config/service/auth '@{Basic="true"}' >> $logfile
-        & winrm.cmd set winrm/config/service '@{AllowUnencrypted="true"}' >> $logfile
         & winrm.cmd set winrm/config/winrs '@{MaxMemoryPerShellMB="1024"}' >> $logfile
         #Firewall Config
         & netsh advfirewall firewall set rule name="Windows Remote Management (HTTP-In)" profile=public protocol=tcp localport=5985 remoteip=localsubnet new remoteip=any  >> $logfile

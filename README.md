@@ -30,7 +30,7 @@ Once
 that is done, create your kitchen file in your cookbook directory (or an empty
 directory if you just want to get a feel for it):
 
-1. `kitchen init -D ec2`
+1. `kitchen init -D kitchen-ec2`
 2. Edit `.kitchen.yml` and add the aws_ssh_key_id to driver and a transport with
    an ssh_key:
 
@@ -65,7 +65,8 @@ working with!
 ```yaml
 platforms:
   - name: centos-7
-    image_id: ami-96a818fe
+    driver:
+      image_id: ami-96a818fe
 ```
 
 image_id's have a format like ami-748e2903. The image_id values appear next to the image names when you select 'Launch Instance' from the AWS EC2 console. You can also see the list from the AWS CLI ````aws ec2 describe-images````.
@@ -349,6 +350,10 @@ Specify a proxy to send AWS requests through.  Should be of the format `http://<
 The default is `ENV["HTTPS_PROXY"] || ENV["HTTP_PROXY"]`.  If you have these environment variables set and do not want to use a proxy when contacting aws set `http_proxy: nil`.
 
 **Note** - The AWS command line utility allow you to specify [two proxies](http://docs.aws.amazon.com/cli/latest/userguide/cli-http-proxy.html), one for HTTP and one for HTTPS.  The AWS Ruby SDK only allows you to specify 1 proxy and because all requests are `https://` this proxy needs to support HTTPS.
+
+### `ssl_verify_peer`
+
+If you need to turn off ssl certificate verification for HTTP calls made to AWS, set `ssl_verify_peer: false`.
 
 ### Disk Configuration
 
