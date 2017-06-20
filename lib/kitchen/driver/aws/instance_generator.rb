@@ -129,6 +129,13 @@ module Kitchen
               i[:network_interfaces][0][:groups] = i.delete(:security_group_ids)
             end
           end
+          if !config.fetch(:network_interfaces).nil?
+            i[:network_interfaces] += config.fetch(:network_interfaces)
+            i[:network_interfaces].each do |interface|
+              interface[:subnet_id] = i[:network_interfaces][0][:subnet_id] if i[:network_interfaces][0][:subnet_id]
+              interface[:groups] = i[:network_interfaces][0][:groups] if i[:network_interfaces][0][:groups]
+            end
+          end
           availability_zone = config[:availability_zone]
           if availability_zone
             if availability_zone =~ /^[a-z]$/i
