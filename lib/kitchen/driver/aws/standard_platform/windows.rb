@@ -1,3 +1,18 @@
+#
+# Copyright:: 2016-2018, Chef Software, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 require "kitchen/driver/aws/standard_platform"
 
 module Kitchen
@@ -45,9 +60,9 @@ module Kitchen
             # 2008r2rtm -> [ img1, img2, img3 ]
             # 2012r2sp1 -> [ img4, img5 ]
             # ...
-            images.group_by { |image| self.class.from_image(driver, image).windows_version_parts }.
-              sort_by { |version, _platform_images| version }.
-              reverse.flat_map { |_version, platform_images| platform_images }
+            images.group_by { |image| self.class.from_image(driver, image).windows_version_parts }
+              .sort_by { |version, _platform_images| version }
+              .reverse.flat_map { |_version, platform_images| platform_images }
           end
 
           def self.from_image(driver, image)
@@ -79,6 +94,8 @@ module Kitchen
           # 2012sp4 -> [ 2012, 0, 4 ]
           # 2012rtm -> [ 2012, 0, 0 ]
           # 2016 -> [ 2016, 0, nil ]
+          # 1709 -> [ 1709, 0, nil ]
+          # 1803 -> [ 1803, 0, nil ]
           def windows_version_parts
             version = self.version
             if version
@@ -115,6 +132,8 @@ module Kitchen
 
             if major == 2016
               "Windows_Server-2016-English-Full-Base-*"
+            elsif major == 1709 || major == 1803
+              "Windows_Server-#{major}-English-Core-ContainersLatest-*"
             else
               case revision
               when nil

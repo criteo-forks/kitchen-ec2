@@ -2,7 +2,8 @@
 #
 # Author:: Fletcher Nichol (<fnichol@nichol.ca>)
 #
-# Copyright (C) 2012, Fletcher Nichol
+# Copyright:: 2016-2018, Chef Software, Inc.
+# Copyright:: 2012-2018, Fletcher Nichol
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +22,6 @@ module Kitchen
   module Driver
 
     # Version string for EC2 Test Kitchen driver
-    EC2_VERSION = "1.3.2"
+    EC2_VERSION = "2.4.0".freeze
   end
 end

@@ -2,7 +2,8 @@
 #
 # Author:: Fletcher Nichol (<fnichol@nichol.ca>)
 #
-# Copyright (C) 2015, Fletcher Nichol
+# Copyright:: 2015-2018, Fletcher Nichol
+# Copyright:: 2016-2018, Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +16,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+require "support/fake_image"
 
 if ENV["CODECLIMATE_REPO_TOKEN"]
   require "codeclimate-test-reporter"
@@ -99,6 +102,6 @@ RSpec.configure do |config|
 
 end
 
-require "aws-sdk"
+require "aws-sdk-ec2"
 # https://ruby.awsblog.com/post/Tx15V81MLPR8D73/Client-Response-Stubs
 Aws.config[:stub_responses] = true

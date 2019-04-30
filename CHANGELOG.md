@@ -1,5 +1,124 @@
 # Change Log
 
+## [v2.4.0](https://github.com/test-kitchen/kitchen-ec2/tree/v2.4.0) (2018-12-20)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.3.4..v2.4.0)
+
+- Don't ship spec files in the gem artifact
+- Support Amazon Linux 2.0 image searching. Use the platform 'amazon2'
+- Support Windows Server 1709 and 1803 image searching
+
+## [v2.3.4](https://github.com/test-kitchen/kitchen-ec2/tree/v2.3.4) (2018-12-04)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.3.3...v2.3.4)
+
+- Don't ship the changelog in the gem
+
+## [v2.3.3](https://github.com/test-kitchen/kitchen-ec2/tree/v2.3.3) (2018-11-28)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.3.2...v2.3.3)
+
+**Merged pull requests:**
+
+- Adding support for arm64 architecture [\#433]
+
+## [v2.3.2](https://github.com/test-kitchen/kitchen-ec2/tree/v2.3.2) (2018-11-28)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.3.1...v2.3.2)
+
+**Fixed Bugs:**
+
+- fix x86_64 architecture default for image search (fixes new arm64 arch appearing instead) [\#432]
+
+## [v2.3.1](https://github.com/test-kitchen/kitchen-ec2/tree/v2.3.1) (2018-10-19)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.3.0...v2.3.1)
+
+**Fixed Bugs:**
+
+- windows2012-r2 hanging on userdata.ps1 in kitchen-ec2 2.3.0 [\#424]
+
+## [v2.3.0](https://github.com/test-kitchen/kitchen-ec2/tree/v2.3.0) (2018-10-05)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.2.2...v2.3.0)
+
+- Add port 3389 (RDP) to the automatically generated security group
+- Fix logfile creation on Windows to not fail if the directory doesn't exist
+- The gem no longer ships with test deps so we can slim the install size
+
+## [v2.2.2](https://github.com/test-kitchen/kitchen-ec2/tree/v2.2.2) (2018-06-11)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.2.1...v2.2.2)
+
+**Fixed bugs:**
+
+- Kitchen failure when adding spot\_price [\#328](https://github.com/test-kitchen/kitchen-ec2/issues/328)
+
+**Closed issues:**
+
+- image\_id: required [\#397](https://github.com/test-kitchen/kitchen-ec2/issues/397)
+- kitchen-ec2 ssh port [\#396](https://github.com/test-kitchen/kitchen-ec2/issues/396)
+- Provide option to terminate after "X" minutes [\#395](https://github.com/test-kitchen/kitchen-ec2/issues/395)
+- Explicitly support usage w/o manual or autoconfiguration of aws\_ssh\_key\_id [\#391](https://github.com/test-kitchen/kitchen-ec2/issues/391)
+
+**Merged pull requests:**
+
+- Fix dynamic key creation [\#400](https://github.com/test-kitchen/kitchen-ec2/pull/400) ([bdwyertech](https://github.com/bdwyertech))
+- allow AWS-managed ssh key pairs to be disabled [\#392](https://github.com/test-kitchen/kitchen-ec2/pull/392) ([cheeseplus](https://github.com/cheeseplus))
+
+## [v2.2.1](https://github.com/test-kitchen/kitchen-ec2/tree/v2.2.1) (2018-02-12)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.2.0...v2.2.1)
+
+**Fixed bugs:**
+
+- Fix `undefined` error when Windows AMIs don't include "windows" in name [\#322](https://github.com/test-kitchen/kitchen-ec2/issues/322) [\#324](https://github.com/test-kitchen/kitchen-ec2/pull/324) ([BenLiyanage](https://github.com/BenLiyanage))
+- Fix error behavior when security\_group\_filter is set but no security group found for those tags [\#386](https://github.com/test-kitchen/kitchen-ec2/pull/386) ([dpattmann](https://github.com/dpattmann))
+- Don't create security group if security\_group\_filter is set [\#385](https://github.com/test-kitchen/kitchen-ec2/pull/385) ([dpattmann](https://github.com/dpattmann))
+
+## [v2.2.0](https://github.com/test-kitchen/kitchen-ec2/tree/v2.2.0) (2018-01-27)
+
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.1.0...v2.2.0)
+
+- When config validation fails we now show you just the error message instead of the full stack trace with a buried error message
+- Removed the username logic for FreeBSD < 9.1 as those releases are EOL
+- Add support for Debian 10/11 so we'll support them as soon as they're released
+- Added support for the 'host' tenancy value
+- Added proper config validation for tenancy instead of silently skipping bad data
+- Properly handle Integers in tags instead of failing the run
+- Properly handle nil values in tags instead of failing the run
+- Add validation to make sure the tags are passed as a single hash instead of an array of each tag
+- Update our Yard dev dependency to make sure we have 0.9.11+ to avoid a CVE in earlier releases
+- Update links in docs and distros in the examples
+- Removed Rubocop comments that weren't necessary from the code
+
+## [v2.1.0](https://github.com/test-kitchen/kitchen-ec2/tree/v2.1.0) (2018-01-27)
+
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v2.0.0...v2.1.0)
+
+**Merged pull requests:**
+
+- Only create Ohai hint when provisioner is `/chef/` [\#366](https://github.com/test-kitchen/kitchen-ec2/pull/366) ([cheeseplus](https://github.com/cheeseplus))
+- Automatically create a security group and key pair if needed. [\#362](https://github.com/test-kitchen/kitchen-ec2/pull/362) ([coderanger](https://github.com/coderanger))
+
+## [v2.0.0](https://github.com/test-kitchen/kitchen-ec2/tree/v2.0.0) (2017-12-08)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v1.4.0...v2.0.0)
+
+**Improvements**
+
+- Clean up original Authentication; Rely on SDK for Chain. [\#353](https://github.com/test-kitchen/kitchen-ec2/pull/353) ([rhyas](https://github.com/rhyas))
+- Use quadratic backoff when encountering RequestLimit errors [\#320](https://github.com/test-kitchen/kitchen-ec2/pull/320) ([kamaradclimber](https://github.com/kamaradclimber))
+
+## [v1.4.0](https://github.com/test-kitchen/kitchen-ec2/tree/v1.4.0) (2017-11-29)
+[Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v1.3.2...v1.4.0)
+
+**Improvements**
+
+- Explicitly initialise secondary disks on windows 2016 [\#352](https://github.com/test-kitchen/kitchen-ec2/pull/352) ([rlaveycal](https://github.com/rlaveycal))
+- Fix windows user\_data log file [\#350](https://github.com/test-kitchen/kitchen-ec2/pull/350) ([rlaveycal](https://github.com/rlaveycal))
+- Set LocalAccountTokenFilterPolicy to allow powershell remoting from local accounts [\#348](https://github.com/test-kitchen/kitchen-ec2/pull/348) ([Sam-Martin](https://github.com/Sam-Martin))
+- Add EC2 hostname when printing ready message [\#346](https://github.com/test-kitchen/kitchen-ec2/pull/346) ([pierrecdn](https://github.com/pierrecdn))
+- Fix for issue with instance-store backed instance \(issue \#318\) [\#343](https://github.com/test-kitchen/kitchen-ec2/pull/343) ([naunga](https://github.com/naunga))
+- Handle nulls/binary text in user data so it supports gzip [\#338](https://github.com/test-kitchen/kitchen-ec2/pull/338) ([brodygov](https://github.com/brodygov))
+- This updates the documentation [\#337](https://github.com/test-kitchen/kitchen-ec2/pull/337) ([stiller-leser](https://github.com/stiller-leser))
+- Add support for Debian Stretch [\#327](https://github.com/test-kitchen/kitchen-ec2/pull/327) ([RoboticCheese](https://github.com/RoboticCheese))
+- Add support for Amazon Linux [\#321](https://github.com/test-kitchen/kitchen-ec2/pull/321) ([steven-burns](https://github.com/steven-burns))
+- modernize winrm setup and fix for 2008r2 [\#304](https://github.com/test-kitchen/kitchen-ec2/pull/304) ([mwrock](https://github.com/mwrock))
+- Updated readme based on issue 300 [\#302](https://github.com/test-kitchen/kitchen-ec2/pull/302) ([pgporada](https://github.com/pgporada))
+- Use Chefstyle and require Ruby 2.2.2 [\#301](https://github.com/test-kitchen/kitchen-ec2/pull/301) ([tas50](https://github.com/tas50))
+
 ## [v1.3.2](https://github.com/test-kitchen/kitchen-ec2/tree/v1.3.2) (2017-02-24)
 [Full Changelog](https://github.com/test-kitchen/kitchen-ec2/compare/v1.3.1...v1.3.2)
 

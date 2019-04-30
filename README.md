@@ -9,39 +9,21 @@ A [Test Kitchen][kitchenci] Driver for Amazon EC2.
 This driver uses the [aws sdk gem][aws_sdk_gem] to provision and destroy EC2
 instances. Use Amazon's cloud for your infrastructure testing!
 
-## Initial Setup
-
-To get started, you need to install the software and set up your credentials and SSH key. Some of these steps you have probably already done, but we include them here for completeness.
-
-1. Install the latest test-kitchen or ChefDK and put it in your path.
-2. From this repository, type `bundle install; bundle exec rake install` to install the latest version of the driver.
-3. Install the [AWS command line tools](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-set-up.html).
-4. Run `aws configure` to place your AWS credentials on the drive at ~/.aws/credentials.
-5. Create your AWS SSH key. We recommend naming it with your username, but you can use any name:
-
-     ```
-     aws ec2 create-key-pair --key-name $USER | ruby -e "require 'json'; puts JSON.parse(STDIN.read)['KeyMaterial']" > ~/.ssh/$USER
-     ```
-6. `export AWS_SSH_KEY_ID=<your key name>`
-
 ## Quick Start
 
-Once
-that is done, create your kitchen file in your cookbook directory (or an empty
-directory if you just want to get a feel for it):
-
-1. `kitchen init -D kitchen-ec2`
-2. Edit `.kitchen.yml` and add the aws_ssh_key_id to driver and a transport with
-   an ssh_key:
+1. Install [ChefDK](https://downloads.chef.io/chefdk). If testing things other
+   than Chef cookbooks, please consult your driver's documentation for information
+   on what to install.
+2. Install the [AWS command line tools](https://docs.aws.amazon.com/cli/latest/userguide/installing.html).
+3. Run `aws configure`. This will set up your AWS credentials for both the AWS
+   CLI tools and kitchen-ec2.
+4. Add or exit the `driver` section of your `.kitchen.yml`:
 
    ```yaml
-   transport:
-     ssh_key: ~/.ssh/your_private_key_file
+   driver:
+     name: ec2
    ```
-3. While you are in there, modify `centos-7.1` to `centos-7`.
-3. `kitchen test`
-
-It's that easy! This will set up and run centos and ubuntu flavored instances.
+5. Run `kitchen test`.
 
 ## Requirements
 
@@ -54,8 +36,53 @@ By automatically applying reasonable defaults wherever possible, kitchen-ec2 doe
 
 ### Specifying the Image
 
-There are three ways to specify the image you use for the instance: `image_id`,
-`image_search` and `platform.name`
+There are three ways to specify the image you use for the instance: the `platform`
+name, `image_id`, and `image_search`.
+
+#### `platform` Name
+
+The third way to specify the image is by leaving `image_id` and `image_search`
+blank, and specifying a standard platform name.
+
+```yaml
+platforms:
+  - name: ubuntu-14.04
+```
+
+If you use the platform name `ubuntu`, `windows`, `rhel`, `debian`, `centos`, `freebsd` or `fedora`, kitchen-ec2 will search for the latest matching official image of
+the given OS in your region. You may leave versions off, specify partial versions,
+and you may specify architecture to distinguish 32- and 64-bit. Some examples:
+
+```yaml
+platforms:
+  # The latest stable minor+patch release of rhel 6
+  - name: rhel-6
+  # The latest patch release of CentOS 6.3
+  - name: centos-6.3
+  # The latest patch release of Amazon Linux 2017.03
+  - name: amazon-2017.03
+  # The latest patch release of Amazon Linux 2 2018
+  - name: amazon2-2018
+  # 32-bit version of latest major+minor+patch release of Ubuntu
+  - name: ubuntu-i386
+  # 32-bit version of Debian 6
+  - name: debian-6-i386
+  # Latest 32-bit stable minor release of freebsd 10
+  - name: freebsd-10-i386
+  # The latest stable major+minor+patch release of Fedora
+  - name: fedora
+  # The most recent service-pack for Windows 2012 (not R2)
+  - name: windows-2012
+  # The most recent service-pack for Windows 2012R2
+  - name: windows-2012r2
+  # Windows 2008 RTM (not R2, no service pack)
+  - name: windows-2008rtm
+  # Windows 2008R2 SP1
+  - name: windows-2008r2sp1
+```
+
+We always pick the highest released stable version that matches your regex, and
+follow the other `image_search` rules for preference.
 
 #### `image_id`
 
@@ -104,136 +131,59 @@ Some examples are:
 
 It is safest to use the same naming convention as used by the public images published by the OS vendors on the AWS marketplace.
 
-#### `platform.name`
-
-The third way to specify the image is by leaving `image_id` and `image_search`
-blank, and specifying a standard platform name.
-
-```yaml
-platforms:
-  - name: ubuntu-14.04
-```
-
-If you use the platform name `ubuntu`, `windows`, `rhel`, `debian`, `centos`, `freebsd` or `fedora`, kitchen-ec2 will search for the latest matching official image of
-the given OS in your region. You may leave versions off, specify partial versions,
-and you may specify architecture to distinguish 32- and 64-bit. Some examples:
-
-```yaml
-platforms:
-  # The latest stable minor+patch release of rhel 6
-  - name: rhel-6
-  # The latest patch release of CentOS 6.3
-  - name: centos-6.3
-  # 32-bit version of latest major+minor+patch release of Ubuntu
-  - name: ubuntu-i386
-  # 32-bit version of Debian 6
-  - name: debian-6-i386
-  # Latest 32-bit stable minor release of freebsd 10
-  - name: freebsd-10-i386
-  # The latest stable major+minor+patch release of Fedora
-  - name: fedora
-  # The most recent service-pack for Windows 2012 (not R2)
-  - name: windows-2012
-  # The most recent service-pack for Windows 2012R2
-  - name: windows-2012r2
-  # Windows 2008 RTM (not R2, no service pack)
-  - name: windows-2008rtm
-  # Windows 2008R2 SP1
-  - name: windows-2008r2sp1
-```
-
-We always pick the highest released stable version that matches your regex, and
-follow the other `image_search` rules for preference.
-
 ### AWS Authentication
 
-In order to connect to AWS, you must specify the AWS access key id and secret key
-for your account. There are 3 ways you do this, and we will try them in the
-following order:
+In order to connect to AWS, you must specify AWS credentials. We rely on the SDK
+to find credentials in the standard way, documented here:
+https://github.com/aws/aws-sdk-ruby/#configuration
 
-1. You can specify the access key and access secret (and optionally the session
-   token) through config.  See the `aws_access_key_id` and `aws_secret_access_key`
-   config sections below to see how to specify these in your .kitchen.yml or
-   through environment variables.  If you would like to specify your session token
-   use the environment variable `AWS_SESSION_TOKEN`.
-2. The shared credentials ini file at `~/.aws/credentials`. This is the file
-   populated by `aws configure` command line and used by AWS tools in general, so if
-   you are set up for any other AWS tools, you probably already have this. You can
-   specify multiple profiles in this file and select one with the `AWS_PROFILE`
-   environment variable or the `shared_credentials_profile` driver config.  Read
-   [this][credentials_docs] for more information.
-3. From an instance profile when running on EC2.  This accesses the local
-   metadata service to discover the local instance's IAM instance profile.
-
-This precedence order is taken from http://docs.aws.amazon.com/sdkforruby/api/index.html#Configuration
-
-The first method attempted that works will be used.  IE, if you want to auth
-using the instance profile, you must not set any of the access key configs
-or environment variables, and you must not specify a `~/.aws/credentials`
-file.
+The SDK Chain will search environment variables, then config files, then IAM role
+data from the instance profile, in that order. In the case config files being
+present, the 'default' profile will be used unless `shared_credentials_profile`
+is defined to point to another profile.
 
 Because the Test Kitchen test should be checked into source control and ran
-through CI we no longer recommend storing the AWS credentials in the
-`.kitchen.yml` file.  Instead, specify them as environment variables or in the
-`~/.aws/credentials` file.
+through CI we no longer support storing the AWS credentials in the
+`.kitchen.yml` file.
 
 ### Instance Login Configuration
 
 The instances you create use credentials you specify which are *separate* from
 the AWS credentials. Generally, SSH and WinRM use an AWS key pair which you
-specify. You probably set this up in the Initial Setup.
+specify.
 
-#### `aws_ssh_key_id`
+#### SSH
 
-The ID of the AWS key pair you want to use.
+The `aws_ssh_key_id` value is the name of the AWS key pair you want to use.
 
-The default will be read from the `AWS_SSH_KEY_ID` environment variable if set,
-or `nil` otherwise.
+The value can be one of:
 
-If `aws_ssh_key_id` is specified, it must be one of the KeyName values shown by the AWS CLI: `aws ec2 describe-key-pairs`.
-Otherwise, if not specified, you must either have a user pre-provisioned on the AMI, or provision the user using `user_data`.
+* `nil` (default)
 
-#### `transport.ssh_key`
+By default the key ID is read from the `AWS_SSH_KEY_ID` environment variable. If the environment variable is not set, the value will be nil. In this case, a temporary key will be created for you (**>= 2.1.0**).
 
-The private key file for the AWS key pair you want to use.
+* `name_of_some_existing_aws_key_pair`
 
-#### `transport.username`
+By setting the environment variable `AWS_SSH_KEY_ID` or by setting the `aws_ssh_key_id` driver option in kitchen.yml. This will be the key that becomes associated with the test EC2 instances. The key must already exist in AWS. To see a list of existing key pair IDs in a region, use the `aws` CLI tool. For example, in the US-East-1 region: `aws ec2 describe-key-pairs --region us-east-1`.
 
-This is not strictly a `driver` thing, but the username is a crucial component
-of logging in to an instance. Different AMIs tend to provide different usernames.
+* `_disable`
 
-If you use an official AMI (or create an image with the platform name in the
-image name), we will use the default username for official AMIs for that platform.
+This will not directly associate the EC2 instance with an AWS-managed key pair (pre-existing or auto-generated). This may be useful in environments that have disabled AWS-managed keys. Getting SSH keys onto the instance then becomes an exercise for the reader, though it can be done, for example, with scripting in `user_data` or if the credentials are already baked into the AMI.
 
-#### `ebs_optimized`
+When using an existing key, either an AWS-managed key pair or keys that exist on the instance through some other means, ensure that the private key is configured in your Test Kitchen `transport` section, either directly or made available via `ssh-agent`:
 
-Option to launch EC2 instance with optimized EBS volume. See
-[Amazon EC2 Instance Types](http://aws.amazon.com/ec2/instance-types/) to find
-out more about instance types that can be launched as EBS-optimized instances.
+```yaml
+transport:
+  ssh_key: ~/.ssh/mykey.pem
+```
 
-The default is `false`.
+For standard platforms we automatically provide the SSH username, but when specifying your own AMI you may need to configure that as well.
 
-#### Password
+#### WinRM
 
-For Windows instances the generated Administrator password is fetched
-automatically from Amazon EC2 with the same private key as we use for
-SSH logins to Linux.
+For Windows instances the generated Administrator password is fetched automatically from Amazon EC2 with the same private key as we use for SSH.
 
-### Windows Configuration
-
-If you specify a platform name starting with `windows`, Test Kitchen will pull a
-default AMI out of `amis.json` if one is not specified.
-
-The default user_data will add any `username` with its associated `password`
-from the transport options to the Aministrator group.  If no `username` is
-specified then the default `administrator` is available.
-
-AWS automatically generates an `administrator` password in the default
-Windows AMIs.  Test Kitchen fetches this and stores it in the
-`.kitchen/#{platform}.json` file.  If you need to `kitchen login` to the instance
-and you have not specified your own `username` and `password` you can use
-the `administrator` user and the password from this file.  Unfortunately
-we cannot auto-fill the RDP password at this point.
+Unfortunately the RDP file format does not allow including login credentials, so `kitchen login` with WinRM cannot automatically log in for you.
 
 ### Other Configuration
 
@@ -245,21 +195,20 @@ the letter designation - will attach this to the region used.
 If not specified, your instances will be placed in an AZ of AWS's choice in your
 region.
 
-### <a name="config-instance_type"></a> `instance_type`
+#### `instance_type`
 
 The EC2 [instance type][instance_docs] (also known as size) to use.
 
 The default is `t2.micro` or `t1.micro`, depending on whether the image is `hvm`
 or `paravirtual`. (`paravirtual` images are incompatible with `t2.micro`.)
 
-### `security_group_ids`
+#### `security_group_ids`
 
 An Array of EC2 [security groups][group_docs] which will be applied to the
-instance.
+instance. If no security group is specified, a temporary group will be created
+automatically which allows SSH and WinRM (**>= 2.1.0**).
 
-The default is `["default"]`.
-
-### `security_group_filter`
+#### `security_group_filter`
 
 The EC2 [security group][group_docs] which will be applied to the instance,
 specified by tag. Only one group can be specified this way.
@@ -273,20 +222,26 @@ security_group_filter:
   value: 'example-group-name'
 ```
 
-### `region`
+### `security_group_cidr_ip`
+
+The EC2 [security group][group_docs] ip, in CIDR block format, to use when creating the security group.
+
+The default is "0.0.0.0/0".
+
+#### `region`
 
 **Required** The AWS [region][region_docs] to use.
 
 If the environment variable `AWS_REGION` is populated that will be used.
 Otherwise the default is `"us-east-1"`.
 
-### `subnet_id`
+#### `subnet_id`
 
 The EC2 [subnet][subnet_docs] to use.
 
 The default is unset, or `nil`.
 
-### `subnet_filter`
+#### `subnet_filter`
 
 The EC2 [subnet][subnet_docs] to use, specified by tag.
 
@@ -299,13 +254,13 @@ subnet_filter:
   value: 'example-subnet-name'
 ```
 
-### `tags`
+#### `tags`
 
 The Hash of EC tag name/value pairs which will be applied to the instance.
 
 The default is `{ "created-by" => "test-kitchen" }`.
 
-### `user_data`
+#### `user_data`
 
 The user_data script or the path to a script to feed the instance.
 Use bash to install dependencies or download artifacts before chef runs.
@@ -318,32 +273,55 @@ On Windows instances we specify a default that enables winrm and
 adds a non-administrator user specified in the `username` transport
 options to the Administrator's User Group.
 
-### `iam_profile_name`
+#### `iam_profile_name`
 
-The EC2 IAM profile name to use.
+The EC2 IAM profile name to use. The default is `nil`.
 
-The default is `nil`.
+Note: The user, whose AWS credentials you have defined, not only needs `AmazonEC2FullAccess` permissions, but also the ability to execute `iam:PassRole`.
+Hence, use a policy like below when using this option:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:PassRole",
+            "Resource": "arn:aws:iam::123456789:role/RoleName"
+        }
+    ]
+}
+```
 
-### `spot_price`
+See [AWS documentation](https://aws.amazon.com/de/blogs/security/granting-permission-to-launch-ec2-instances-with-iam-roles-passrole-permission/) for more details.
+
+
+#### `spot_price`
 
 The price you bid in order to submit a spot request. An additional step will be required during the spot request process submission. If no price is set, it will use an on-demand instance.
 
 The default is `nil`.
 
-### `instance_initiated_shutdown_behavior`
+#### `instance_initiated_shutdown_behavior`
 
 Control whether an instance should `stop` or `terminate` when shutdown is initiated from the instance using an operating system command for system shutdown.
 
 The default is `nil`.
 
-### block_duration_minutes
+#### `block_duration_minutes`
 
 The [specified duration](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-requests.html#fixed-duration-spot-instances) for a spot instance, in minutes. This value must be a multiple of 60 (60, 120, 180, 240, 300, or 360).
 If no duration is set, the spot instance will remain active until it is terminated.
 
 The default is `nil`.
 
-### `http_proxy`
+#### `http_proxy`
 
 Specify a proxy to send AWS requests through.  Should be of the format `http://<host>:<port>`.
 
@@ -351,7 +329,7 @@ The default is `ENV["HTTPS_PROXY"] || ENV["HTTP_PROXY"]`.  If you have these env
 
 **Note** - The AWS command line utility allow you to specify [two proxies](http://docs.aws.amazon.com/cli/latest/userguide/cli-http-proxy.html), one for HTTP and one for HTTPS.  The AWS Ruby SDK only allows you to specify 1 proxy and because all requests are `https://` this proxy needs to support HTTPS.
 
-### `ssl_verify_peer`
+#### `ssl_verify_peer`
 
 If you need to turn off ssl certificate verification for HTTP calls made to AWS, set `ssl_verify_peer: false`.
 
@@ -465,18 +443,8 @@ transport:
   username: ubuntu
 
 platforms:
-  - name: ubuntu-12.04
-  - name: centos-6.4
-  - name: ubuntu-15.04
-    driver:
-      image_id: ami-83211eb3
-      block_device_mappings:
-        - device_name: /dev/sda1
-          ebs:
-            volume_type: standard
-            virtual_name: test
-            volume_size: 15
-            delete_on_termination: true
+  - name: ubuntu-16.04
+  - name: centos-6.9
   - name: centos-7
     driver:
       image_id: ami-c7d092f7
@@ -490,7 +458,7 @@ platforms:
     transport:
       username: centos
   - name: windows-2012r2
-  - name: windows-2008r2
+  - name: windows-2016
 
 suites:
 # ...
@@ -511,10 +479,6 @@ example:
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-## <a name="authors"></a> Authors
-
-Created and maintained by [Fletcher Nichol][author] (<fnichol@nichol.ca>)
-
 ## <a name="license"></a> License
 
 Apache 2.0 (see [LICENSE][license])
@@ -525,17 +489,17 @@ Apache 2.0 (see [LICENSE][license])
 [license]:          https://github.com/test-kitchen/kitchen-ec2/blob/master/LICENSE
 [repo]:             https://github.com/test-kitchen/kitchen-ec2
 [driver_usage]:     https://github.com/test-kitchen/kitchen-ec2
-[chef_omnibus_dl]:  https://downloads.chef.io/chef-client/
+[chef_omnibus_dl]:  https://downloads.chef.io/chef
 [amis_json]:        https://github.com/test-kitchen/kitchen-ec2/blob/master/data/amis.json
 [ami_docs]:         http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ComponentsAMIs.html
 [aws_site]:         http://aws.amazon.com/
 [iam_site]:         http://aws.amazon.com/iam
-[credentials_docs]: http://blogs.aws.amazon.com/security/post/Tx3D6U6WSFGOK2H/A-New-and-Standardized-Way-to-Manage-Credentials-in-the-AWS-SDKs
-[aws_sdk_gem]:      http://docs.aws.amazon.com/sdkforruby/api/index.html
-[group_docs]:       http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html
-[instance_docs]:    http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
-[key_id_docs]:      http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/verifying-your-key-pair.html
-[kitchenci]:        http://kitchen.ci/
-[region_docs]:      http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
-[subnet_docs]:      http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
-[vpc_docs]:         http://docs.aws.amazon.com/AmazonVPC/latest/GettingStartedGuide/ExerciseOverview.html
+[credentials_docs]: https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/
+[aws_sdk_gem]:      https://docs.aws.amazon.com/sdkforruby/api/index.html
+[group_docs]:       https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html
+[instance_docs]:    https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
+[key_id_docs]:      https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
+[kitchenci]:        https://kitchen.ci/
+[region_docs]:      https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
+[subnet_docs]:      https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
+[vpc_docs]:         https://docs.aws.amazon.com/AmazonVPC/latest/GettingStartedGuide/ExerciseOverview.html

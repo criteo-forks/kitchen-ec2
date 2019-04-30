@@ -19,30 +19,27 @@ module Kitchen
   module Driver
     class Aws
       class StandardPlatform
-        # http://www.daemonology.net/freebsd-on-ec2/
-        class Freebsd < StandardPlatform
-          StandardPlatform.platforms["freebsd"] = self
+        # https://aws.amazon.com/de/amazon-linux-2/release-notes/
+        class Amazon2 < StandardPlatform
+          StandardPlatform.platforms["amazon2"] = self
 
           def username
             "ec2-user"
           end
 
-          def sudo_command
-          end
-
           def image_search
             search = {
-              "owner-id" => "118940168514",
-              "name" => ["FreeBSD #{version}*-RELEASE*", "FreeBSD/EC2 #{version}*-RELEASE*"],
+              "owner-id" => "137112412989",
+              "name" => version ? "amzn2-ami-hvm-2.0.#{version}*" : "amzn2-ami-hvm-2.0.*",
             }
             search["architecture"] = architecture if architecture
             search
           end
 
           def self.from_image(driver, image)
-            if image.name =~ /freebsd/i
-              image.name =~ /\b(\d+(\.\d+)?)\b/i
-              new(driver, "freebsd", (Regexp.last_match || [])[1], image.architecture)
+            if image.name =~ /amzn2-ami/i
+              image.name =~ /\b(\d+(\.\d+[\.\d])?)/i
+              new(driver, "amazon2", (Regexp.last_match || [])[1], image.architecture)
             end
           end
         end

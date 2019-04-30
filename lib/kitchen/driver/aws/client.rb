@@ -2,7 +2,8 @@
 #
 # Author:: Tyler Ball (<tball@chef.io>)
 #
-# Copyright (C) 2015, Fletcher Nichol
+# Copyright:: 2016-2018, Chef Software, Inc.
+# Copyright:: 2015-2018, Fletcher Nichol
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "aws-sdk"
+require "aws-sdk-ec2"
 require "aws-sdk-core/credentials"
 require "aws-sdk-core/shared_credentials"
 require "aws-sdk-core/instance_profile_credentials"
@@ -32,71 +33,20 @@ module Kitchen
       # @author Tyler Ball <tball@chef.io>
       class Client
 
-        def initialize( # rubocop:disable Metrics/ParameterLists
+        def initialize(
           region,
-          profile_name = nil,
-          access_key_id = nil,
-          secret_access_key = nil,
-          session_token = nil,
+          profile_name = "default",
           http_proxy = nil,
           retry_limit = nil,
           ssl_verify_peer = true
         )
-          creds = self.class.get_credentials(
-            profile_name, access_key_id, secret_access_key, session_token, region
-          )
           ::Aws.config.update(
-            :region => region,
-            :credentials => creds,
-            :http_proxy => http_proxy,
-            :ssl_verify_peer => ssl_verify_peer
+            region: region,
+            profile: profile_name,
+            http_proxy: http_proxy,
+            ssl_verify_peer: ssl_verify_peer
           )
-          ::Aws.config.update(:retry_limit => retry_limit) unless retry_limit.nil?
-        end
-
-        # Try and get the credentials from an ordered list of locations
-        # http://docs.aws.amazon.com/sdkforruby/api/index.html#Configuration
-        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
-        def self.get_credentials(profile_name, access_key_id, secret_access_key, session_token,
-                                 region, options = {})
-          source_creds =
-            if access_key_id && secret_access_key
-              ::Aws::Credentials.new(access_key_id, secret_access_key, session_token)
-            elsif ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"]
-              ::Aws::Credentials.new(
-                ENV["AWS_ACCESS_KEY_ID"],
-                ENV["AWS_SECRET_ACCESS_KEY"],
-                ENV["AWS_SESSION_TOKEN"]
-              )
-            elsif profile_name
-              ::Aws::SharedCredentials.new(:profile_name => profile_name)
-            elsif default_shared_credentials?
-              ::Aws::SharedCredentials.new
-            else
-              ::Aws::InstanceProfileCredentials.new(:retries => 1)
-            end
-
-          if options[:assume_role_arn] && options[:assume_role_session_name]
-            sts = ::Aws::STS::Client.new(:credentials => source_creds, :region => region)
-
-            assume_role_options = (options[:assume_role_options] || {}).merge(
-              :client => sts,
-              :role_arn => options[:assume_role_arn],
-              :role_session_name => options[:assume_role_session_name]
-            )
-
-            ::Aws::AssumeRoleCredentials.new(assume_role_options)
-          else
-            source_creds
-          end
-        end
-        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-
-        def self.default_shared_credentials?
-          ::Aws::SharedCredentials.new.loadable?
-        rescue ::Aws::Errors::NoSuchProfileError
-          false
+          ::Aws.config.update(retry_limit: retry_limit) unless retry_limit.nil?
         end
 
         def create_instance(options)
@@ -115,9 +65,9 @@ module Kitchen
 
         def get_instance_from_spot_request(request_id)
           resource.instances(
-            :filters => [{
-              :name => "spot-instance-request-id",
-              :values => [request_id],
+            filters: [{
+              name: "spot-instance-request-id",
+              values: [request_id],
             }]
           ).to_a[0]
         end
