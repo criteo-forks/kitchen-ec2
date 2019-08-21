@@ -241,7 +241,11 @@ module Kitchen
             # unknown reason
             info("Error closing connection with message: #{ex.class.name} #{ex.message} #{ex.backtrace}")
           end
-          server.terminate
+          begin
+            server.terminate
+          rescue ::Aws::EC2::Errors::InvalidInstanceIDNotFound => e
+            warn("Received #{e}, instance was probably already destroyed. Ignoring")
+          end
         end
         if state[:spot_request_id]
           debug("Deleting spot request <#{state[:server_id]}>")
